@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -383,6 +383,29 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>(ORDERS_DATA);
   const [chatMessage, setChatMessage] = useState("");
   
+  // Search History State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('deliEatGo_searchHistory');
+    if (saved) {
+      try {
+        setSearchHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error parsing search history", e);
+      }
+    }
+  }, []);
+
+  const addToSearchHistory = (term: string) => {
+    if (!term.trim()) return;
+    const updated = [term, ...searchHistory.filter(h => h !== term)].slice(0, 8);
+    setSearchHistory(updated);
+    localStorage.setItem('deliEatGo_searchHistory', JSON.stringify(updated));
+  };
+  
   // Partner specific state
   const [partnerActiveTab, setPartnerActiveTab] = useState<'dashboard' | 'orders' | 'products' | 'profile'>('dashboard');
   const [businessType, setBusinessType] = useState<BusinessType | null>(null);
@@ -545,9 +568,13 @@ export default function App() {
     }, 2500);
   };
 
-  const filteredItems = selectedCategory 
+  const filteredItems = (selectedCategory 
     ? ITEMS.filter(item => item.category === selectedCategory)
-    : ITEMS;
+    : ITEMS).filter(item => 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.products.some(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
 
   const handleRoleSelect = (selectedRole: UserRole) => {
     setRole(selectedRole);
@@ -2001,13 +2028,76 @@ export default function App() {
           
           {/* Search Bar */}
           {!selectedStore && (
-            <div className={`flex items-center gap-3 p-3 ${current.card} rounded-2xl`}>
-              <Search className="w-5 h-5 opacity-40" />
-              <input 
-                type="text" 
-                placeholder={selectedCategory ? `Buscar en ${selectedCategory}...` : "¿Qué necesitas hoy?"}
-                className="bg-transparent border-none outline-none text-sm w-full"
-              />
+            <div className="relative">
+              <div className={`flex items-center gap-3 p-3 ${current.card} rounded-2xl`}>
+                <Search className="w-5 h-5 opacity-40" />
+                <input 
+                  type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowSearchHistory(true)}
+                  onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      addToSearchHistory(searchQuery);
+                      setShowSearchHistory(false);
+                      // Blur the input to hide keyboard on mobile
+                      (e.target as HTMLInputElement).blur();
+                    }
+                  }}
+                  placeholder={selectedCategory ? `Buscar en ${selectedCategory}...` : "¿Qué necesitas hoy?"}
+                  className="bg-transparent border-none outline-none text-sm w-full"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="p-1">
+                    <Plus className="w-4 h-4 rotate-45 opacity-40 hover:opacity-100" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Search History Suggestions */}
+              <AnimatePresence>
+                {showSearchHistory && searchHistory.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`absolute top-full left-0 right-0 mt-2 ${current.card} rounded-2xl shadow-xl z-50 overflow-hidden overflow-y-auto max-h-48 backdrop-blur-xl`}
+                  >
+                    <div className="p-2">
+                       <div className="flex items-center justify-between px-3 py-1 mb-1">
+                         <span className="text-[10px] font-bold uppercase opacity-30 tracking-widest">Búsquedas Recientes</span>
+                         <button 
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setSearchHistory([]);
+                             localStorage.removeItem('deliEatGo_searchHistory');
+                           }}
+                           className="text-[9px] font-bold text-deli-red hover:underline"
+                         >
+                           Limpiar
+                         </button>
+                       </div>
+                       {searchHistory
+                         .filter(h => h.toLowerCase().includes(searchQuery.toLowerCase()))
+                         .map((term, i) => (
+                           <button
+                             key={i}
+                             onClick={() => {
+                               setSearchQuery(term);
+                               addToSearchHistory(term);
+                               setShowSearchHistory(false);
+                             }}
+                             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-deli-teal/5 text-left transition-all group"
+                           >
+                             <History className="w-3 h-3 opacity-30 group-hover:opacity-100 group-hover:text-deli-teal" />
+                             <span className="text-xs font-medium">{term}</span>
+                           </button>
+                         ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </header>
@@ -2488,7 +2578,10 @@ export default function App() {
                   >
                     <Store className="w-6 h-6 text-orange-500" />
                   </motion.div>
-                  <span className="text-[9px] font-bold bg-black text-white px-2 py-0.5 rounded">LOCAL</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-bold bg-black text-white px-2 py-0.5 rounded uppercase tracking-tighter">{selectedTracking.storeName}</span>
+                    <span className="text-[7px] font-bold opacity-40 mt-1">RECOGER AQUÍ</span>
+                  </div>
                 </div>
 
                 {/* User Location */}
@@ -2496,7 +2589,10 @@ export default function App() {
                   <div className={`p-3 bg-white border-2 border-black rounded-xl shadow-lg mb-2`}>
                     <Home className="w-6 h-6 text-blue-500" />
                   </div>
-                  <span className="text-[9px] font-bold bg-black text-white px-2 py-0.5 rounded">TU CASA</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[9px] font-bold bg-black text-white px-2 py-0.5 rounded">TU CASA</span>
+                    <span className="text-[7px] font-bold opacity-40 mt-1">ENTREGA FINAL</span>
+                  </div>
                 </div>
 
                 {/* Driver Animation */}
@@ -2509,13 +2605,29 @@ export default function App() {
                     offsetPath: "path('M 100 600 Q 300 500 100 400 T 300 200')",
                   }}
                   transition={{
-                    duration: 8,
+                    duration: 15,
                     repeat: Infinity,
                     ease: "linear"
                   }}
                 >
-                  <div className={`p-2 ${current.accent} border-2 border-black rounded-full shadow-xl -translate-x-1/2 -translate-y-1/2`}>
-                    <Zap className="w-5 h-5" />
+                  <div className="relative">
+                    {/* Driver Photo Pulse */}
+                    <motion.div 
+                      animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute inset-0 bg-deli-teal rounded-full"
+                    />
+                    <div className="w-10 h-10 rounded-full border-2 border-black shadow-xl overflow-hidden relative z-10">
+                      <img src={selectedTracking.driver?.photo} className="w-full h-full object-cover" />
+                    </div>
+                    {/* Vehicle Icon Badge */}
+                    <div className="absolute -bottom-1 -right-1 p-1 bg-white border border-black rounded-md shadow-md z-20">
+                      {selectedTracking.driver?.vehicle.toLowerCase().includes('moto') ? (
+                        <Zap className="w-2.5 h-2.5 text-deli-teal fill-deli-teal" />
+                      ) : (
+                        <Car className="w-2.5 h-2.5 text-deli-teal" />
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               </div>
@@ -2535,14 +2647,37 @@ export default function App() {
                     </div>
                     <div className="flex gap-2">
                       <button 
+                        onClick={() => window.location.href = `tel:${user.phone}`}
+                        className={`p-3 bg-white border-2 border-black rounded-2xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-50 active:translate-y-0.5 active:shadow-none transition-all`}
+                      >
+                        <Phone className="w-4 h-4" />
+                      </button>
+                      <button 
                         onClick={() => {
                           setSelectedChat(selectedTracking);
                           setSelectedTracking(null);
                         }}
-                        className={`p-3 ${current.accent} rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]`}
+                        className={`p-3 ${current.accent} rounded-2xl border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:opacity-90 active:translate-y-0.5 active:shadow-none transition-all`}
                       >
-                        <MessageCircle className="w-5 h-5" />
+                        <MessageSquare className="w-4 h-4" />
                       </button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 mb-5">
+                    <div className="p-3 bg-white border border-black/10 rounded-2xl">
+                      <p className="text-[8px] font-bold text-deli-teal uppercase mb-1">Llegada estimada</p>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3 opacity-40" />
+                        <p className="text-xs font-black">10:55 AM (8 min)</p>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-white border border-black/10 rounded-2xl">
+                      <p className="text-[8px] font-bold text-deli-orange uppercase mb-1">Distancia</p>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3 h-3 opacity-40" />
+                        <p className="text-xs font-black">1.8 km</p>
+                      </div>
                     </div>
                   </div>
                   
