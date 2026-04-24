@@ -36,12 +36,24 @@ import {
   Mail,
   Car,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  BarChart3,
+  Users,
+  DollarSign,
+  TrendingUp,
+  CheckCircle2,
+  AlertCircle,
+  ShieldCheck,
+  Building2,
+  PieChart,
+  LayoutDashboard,
+  X
 } from 'lucide-react';
 
 type ThemeMode = 'light' | 'dark';
-type UserRole = 'client' | 'driver' | 'partner' | null;
+type UserRole = 'client' | 'driver' | 'partner' | 'admin' | null;
 type AppView = 'role-selection' | 'login' | 'main';
+type AdminTab = 'overview' | 'businesses' | 'drivers' | 'payments' | 'tickets';
 type BusinessType = 'Restaurante' | 'Licor Store' | 'Supermercado' | 'Tienda' | 'Farmacia';
 
 interface PartnerOrder extends Order {
@@ -269,6 +281,13 @@ interface Driver {
   photo: string;
   rating: number;
   vehicle: string;
+  email?: string;
+  phone?: string;
+  cedula?: string;
+  bank?: string;
+  accountType?: string;
+  accountNumber?: string;
+  plate?: string;
 }
 
 interface Order {
@@ -476,6 +495,43 @@ export default function App() {
     { id: 'ORD-5523', client: 'Ana García', address: 'Paseo del Sol 12', total: '$32.20', status: 'Completado', time: '16:30' },
   ]);
 
+  // Admin specific state
+  const [adminActiveTab, setAdminActiveTab] = useState<AdminTab>('overview');
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [adminStats, setAdminStats] = useState({
+    totalEarnings: 45280.50,
+    growth: 15.8,
+    activeDrivers: 24,
+    activeBusinesses: 12,
+    appDirectProfit: 8450.00
+  });
+  
+  const [adminTickets, setAdminTickets] = useState([
+    { id: 'TKT-001', from: 'Laura Méndez', role: 'Cliente', subject: 'Problema con pago', status: 'Abierto', time: 'Hace 5 min' },
+    { id: 'TKT-002', from: 'Carlos Rodríguez', role: 'Conductor', subject: 'Retiro no procesado', status: 'Cerrado', time: 'Ayer' },
+    { id: 'TKT-003', from: 'Burger King', role: 'Negocio', subject: 'Sugerencia de menú', status: 'Abierto', time: 'Hace 2 horas' },
+    { id: 'TKT-004', from: 'Pedro Pico', role: 'Cliente', subject: 'Consulta sobre envíos', status: 'Archivado', time: 'Hace 3 días' }
+  ]);
+
+  const [adminPayouts, setAdminPayouts] = useState([
+    { id: 'PAY-1', name: 'Burger King', role: 'Negocio', amount: 12500, bank: 'Banco Popular', account: '960456123', status: 'Pendiente' },
+    { id: 'PAY-2', name: 'Carlos Rodríguez', role: 'Conductor', amount: 840, bank: 'Banreservas', account: '445229001', status: 'Pendiente' },
+    { id: 'PAY-3', name: 'Farmacia San Pablo', role: 'Negocio', amount: 5600, bank: 'BHD León', account: '112883445', status: 'Realizado' }
+  ]);
+
+  const [adminShowPayoutHistory, setAdminShowPayoutHistory] = useState(false);
+  const [showProcessPayoutModal, setShowProcessPayoutModal] = useState(false);
+  const [payoutFlowStep, setPayoutFlowStep] = useState<'type-selection' | 'entity-selection' | 'summary'>('type-selection');
+  const [selectedPayoutPartnerType, setSelectedPayoutPartnerType] = useState<'Conductor' | 'Negocio' | null>(null);
+  const [selectedPayoutEntity, setSelectedPayoutEntity] = useState<any>(null);
+
+  const [selectedAdminBusiness, setSelectedAdminBusiness] = useState<Item | null>(null);
+  const [selectedAdminDriver, setSelectedAdminDriver] = useState<Driver | null>(null);
+  const [showAddDriverModal, setShowAddDriverModal] = useState(false);
+  const [showAddBusinessModal, setShowAddBusinessModal] = useState(false);
+  const [selectedAdminTicket, setSelectedAdminTicket] = useState<any>(null);
+  const [adminTicketFilter, setAdminTicketFilter] = useState('Recientes');
+
   const user = {
     name: "José Andrés García",
     email: "joseandresgarciagarcia1402@gmail.com",
@@ -485,12 +541,12 @@ export default function App() {
 
   const current = {
     bg: mode === 'light' ? 'bg-white' : 'bg-black',
-    text: mode === 'light' ? 'text-deli-dark' : 'text-white',
-    card: mode === 'light' ? 'bg-white border border-gray-100 shadow-sm' : 'bg-zinc-900 border border-zinc-800',
-    accent: 'bg-deli-teal text-white',
-    secondary: 'bg-deli-orange text-white',
+    text: mode === 'light' ? 'text-gray-800' : 'text-white',
+    card: mode === 'light' ? 'bg-white border-2 border-gray-50 shadow-sm' : 'bg-zinc-900 border border-zinc-800',
+    accent: 'bg-teal-500 text-white',
+    secondary: 'bg-orange-500 text-white',
     font: 'font-sans',
-    headerFont: 'font-display font-bold tracking-tight',
+    headerFont: 'font-black tracking-tight',
   };
 
   const addToCart = (product: Product, store: Item) => {
@@ -667,7 +723,8 @@ export default function App() {
           {[
             { id: 'client', label: 'Cliente', icon: User, color: 'bg-deli-teal' },
             { id: 'driver', label: 'Socio Conductor', icon: DeliCar, color: 'bg-deli-orange' },
-            { id: 'partner', label: 'Socio de Negocio', icon: Store, color: 'bg-deli-dark' }
+            { id: 'partner', label: 'Socio de Negocio', icon: Store, color: 'bg-deli-dark' },
+            { id: 'admin', label: 'Administración', icon: ShieldCheck, color: 'bg-zinc-800' }
           ].map((item) => (
             <motion.button
               key={item.id}
@@ -704,7 +761,7 @@ export default function App() {
         <Logo className="mb-12 scale-90" isDark={mode === 'dark'} />
         
         <h2 className={`text-3xl ${current.headerFont} mb-2`}>
-          {role === 'driver' ? 'Ingreso Conductor' : 'Ingreso Negocio'}
+          {role === 'driver' ? 'Ingreso Conductor' : role === 'partner' ? 'Ingreso Negocio' : 'Panel de Control'}
         </h2>
         <p className="text-sm opacity-60 mb-12">Ingresa tus credenciales para comenzar tu jornada</p>
         
@@ -734,6 +791,1252 @@ export default function App() {
             Iniciar Sesión
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (role === 'admin') {
+    return (
+      <div className={`min-h-screen ${current.bg} ${current.text} ${current.font} flex overflow-hidden`}>
+        {/* Admin Sidebar */}
+        <nav className={`w-20 md:w-64 ${current.card} border-r border-deli-teal/10 flex flex-col h-screen z-50 transition-all`}>
+          <div className="p-6 flex items-center justify-center md:justify-start gap-3">
+             <div className="w-10 h-10 bg-deli-dark rounded-xl flex items-center justify-center text-white font-black">AD</div>
+             <span className="hidden md:block font-black text-xs tracking-tighter">ADMIN PANEL</span>
+          </div>
+          
+          <div className="flex-1 px-4 space-y-2 mt-4">
+            {[
+              { id: 'overview', icon: LayoutDashboard, label: 'Resumen' },
+              { id: 'businesses', icon: Building2, label: 'Negocios' },
+              { id: 'drivers', icon: Car, label: 'Conductores' },
+              { id: 'payments', icon: DollarSign, label: 'Pagos' },
+              { id: 'tickets', icon: MessageSquare, label: 'Mesajería' }
+            ].map((tab) => (
+              <button 
+                key={tab.id}
+                onClick={() => setAdminActiveTab(tab.id as AdminTab)}
+                className={`w-full flex items-center justify-center md:justify-start gap-4 p-4 rounded-2xl transition-all ${adminActiveTab === tab.id ? 'bg-deli-teal text-white shadow-lg shadow-deli-teal/20' : 'opacity-40 hover:opacity-100 hover:bg-deli-teal/5'}`}
+              >
+                <tab.icon className="w-5 h-5 flex-shrink-0" />
+                <span className="hidden md:block text-xs font-bold">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="p-4 border-t border-deli-teal/10">
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center md:justify-start gap-4 p-4 rounded-2xl text-deli-red hover:bg-deli-red/5 transition-all"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="hidden md:block text-xs font-bold">Salir</span>
+            </button>
+          </div>
+        </nav>
+
+        {/* Main Content Area */}
+        <main className="flex-1 h-screen overflow-y-auto no-scrollbar p-6 md:p-10 relative">
+          <header className="flex items-center justify-between mb-10">
+             <div>
+               <h1 className={`text-4xl ${current.headerFont}`}>Hola, Administrador</h1>
+               <p className="text-xs opacity-40 font-bold uppercase tracking-widest mt-1">Panel de Control General DeliEatGo</p>
+             </div>
+             <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => setMode(mode === 'light' ? 'dark' : 'light')}
+                  className={`p-3 ${current.card} rounded-xl`}
+                >
+                  {mode === 'light' ? <Zap className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                </button>
+                <div className={`w-12 h-12 rounded-xl ${current.card} flex items-center justify-center text-deli-teal font-black border-2 border-deli-teal/20 shadow-lg`}>A</div>
+             </div>
+          </header>
+
+          <AnimatePresence mode="wait">
+            {adminActiveTab === 'overview' && (
+              <motion.div 
+                key="overview"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-8"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[
+                    { label: 'Ventas Totales', val: `$${adminStats.totalEarnings.toLocaleString()}`, color: 'bg-deli-dark text-white', icon: BarChart3, trend: '+12.5%' },
+                    { label: 'Ganancia App', val: `$${adminStats.appDirectProfit.toLocaleString()}`, color: 'bg-deli-teal text-white', icon: DollarSign, trend: '+8.2%' },
+                    { label: 'Conductores Activos', val: adminStats.activeDrivers, color: 'bg-deli-orange text-white', icon: Car, trend: '+3' },
+                    { label: 'Crecimiento', val: `+${adminStats.growth}%`, color: 'bg-white text-deli-dark border border-gray-100 shadow-sm', icon: TrendingUp, trend: 'En meta' }
+                  ].map((stat, i) => (
+                    <motion.div 
+                      key={i} 
+                      whileHover={{ y: -5 }}
+                      className={`p-8 rounded-[32px] ${stat.color} relative overflow-hidden group border border-transparent hover:border-white/20 transition-all cursor-default`}
+                    >
+                      <stat.icon className="absolute right-[-10px] top-[-10px] w-32 h-32 opacity-10 rotate-12 group-hover:rotate-45 transition-transform" />
+                      <div className="relative z-10">
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">{stat.label}</p>
+                        <h3 className="text-3xl font-black tracking-tighter mb-4">{stat.val}</h3>
+                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/20 backdrop-blur-sm text-[8px] font-bold">
+                           <TrendingUp className="w-2 h-2" />
+                           <span>{stat.trend}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className={`${current.card} p-10 rounded-[40px] relative overflow-hidden`}>
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-xl font-black">Crecimiento Mensual</h3>
+                      <div className="flex gap-2">
+                         {['Ventas', 'Profit'].map(t => (
+                           <button key={t} className={`px-4 py-1.5 rounded-full text-[10px] font-bold ${t === 'Ventas' ? 'bg-deli-teal text-white' : 'bg-gray-100'}`}>{t}</button>
+                         ))}
+                      </div>
+                    </div>
+                    <div className="h-64 flex items-end justify-between gap-4 px-4 pb-12 relative group/chart">
+                      {[70, 45, 90, 65, 80, 55, 95, 40, 85, 60, 75, 100].map((h, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-4 relative group">
+                           <div className="w-full bg-deli-teal/5 rounded-2xl h-full relative flex items-end">
+                             <motion.div 
+                                initial={{ height: 0 }}
+                                animate={{ height: `${h}%` }}
+                                transition={{ delay: i * 0.05, duration: 1, ease: "backOut" }}
+                                className={`w-full ${i === 11 ? 'bg-deli-orange' : 'bg-deli-teal'} rounded-2xl shadow-xl transition-all group-hover:brightness-110`}
+                             />
+                           </div>
+                           <span className="text-[8px] font-black opacity-20 uppercase tracking-tighter">{['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][i]}</span>
+                           
+                           {/* Tooltip on hover */}
+                           <div className="absolute top-[-30px] left-1/2 -translate-x-1/2 bg-deli-dark text-white px-2 py-1 rounded-lg text-[8px] font-black opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
+                              ${(h * 450).toLocaleString()}
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* SVG Curve Decoration */}
+                    <svg className="absolute bottom-[60px] left-10 right-10 h-32 w-[calc(100%-80px)] pointer-events-none opacity-20" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                       <motion.path 
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 2 }}
+                        d="M0,70 Q100,30 200,90 T400,60 T600,40 T800,80 T1000,50" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="3" 
+                        className="text-deli-teal"
+                       />
+                    </svg>
+                  </div>
+
+                  <div className={`${current.card} p-10 rounded-[40px] shadow-sm`}>
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-xl font-black">Atención al Cliente</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 bg-deli-red rounded-full animate-pulse" />
+                        <span className="text-[10px] font-black opacity-40 uppercase">3 Pendientes</span>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      {adminTickets.slice(0, 3).map((t) => (
+                        <motion.div 
+                          key={t.id} 
+                          whileHover={{ x: 5 }}
+                          onClick={() => {
+                            setAdminActiveTab('tickets');
+                            setSelectedAdminTicket(t);
+                          }}
+                          className="flex items-center justify-between p-5 bg-deli-teal/5 rounded-[28px] group hover:bg-deli-teal/10 transition-all cursor-pointer border border-transparent hover:border-deli-teal/10"
+                        >
+                           <div className="flex items-center gap-4">
+                             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs ${t.role === 'Cliente' ? 'bg-deli-teal text-white' : t.role === 'Conductor' ? 'bg-deli-orange text-white' : 'bg-deli-dark text-white'}`}>
+                               {t.from[0]}
+                             </div>
+                             <div>
+                               <p className="text-xs font-black">{t.from}</p>
+                               <p className="text-[9px] opacity-40 font-bold uppercase">{t.role} • {t.subject}</p>
+                             </div>
+                           </div>
+                           <div className="flex items-center gap-4">
+                              <span className="text-[8px] font-black opacity-20">{t.time}</span>
+                              <ChevronRight className="w-4 h-4 opacity-20 group-hover:opacity-100" />
+                           </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {adminActiveTab === 'drivers' && (
+              <motion.div 
+                key="drivers"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-8"
+              >
+                <div className="flex items-center justify-between">
+                   <h3 className="text-xl font-black">Socios Conductores</h3>
+                   <div className="flex gap-4">
+                      <div className="px-6 py-3 bg-white rounded-2xl flex items-center gap-3 border-2 border-teal-50 group focus-within:border-teal-200 transition-all shadow-sm shadow-teal-50/50">
+                         <Search className="w-5 h-5 text-teal-400 opacity-40 group-focus-within:opacity-100" />
+                         <input 
+                          type="text" 
+                          placeholder="Buscar conductor..." 
+                          value={adminSearchQuery}
+                          onChange={(e) => setAdminSearchQuery(e.target.value)}
+                          className="bg-transparent border-none outline-none text-sm font-bold text-gray-700 placeholder:text-gray-300 w-64" 
+                         />
+                      </div>
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowAddDriverModal(true)}
+                        className="px-8 py-3 bg-teal-50 text-teal-500 border-2 border-teal-100 rounded-2xl text-xs font-black shadow-lg shadow-teal-100/50 hover:bg-teal-500 hover:text-white hover:border-teal-500 transition-all"
+                      >
+                        + Nuevo Conductor
+                      </motion.button>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {ORDERS_DATA.filter(o => o.driver?.name.toLowerCase().includes(adminSearchQuery.toLowerCase())).map((order, i) => {
+                    if (!order.driver) return null;
+                    const driver = order.driver;
+                    return (
+                      <motion.div 
+                        key={i} 
+                        whileHover={{ y: -5 }}
+                        className={`${current.card} p-8 rounded-[40px] relative overflow-hidden group border border-transparent hover:border-teal-200 transition-all shadow-lg shadow-gray-100/30`}
+                      >
+                         <div className="flex items-center gap-5 mb-6">
+                            <div className="w-16 h-16 rounded-[24px] overflow-hidden border-4 border-white shadow-xl flex-shrink-0 group-hover:scale-105 transition-transform duration-500">
+                               <img src={driver.photo} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="min-w-0">
+                               <h3 
+                                onClick={() => setSelectedAdminDriver(driver)}
+                                className="text-base font-black truncate hover:text-teal-400 cursor-pointer transition-colors"
+                               >
+                                {driver.name}
+                               </h3>
+                               <div className="flex items-center gap-1 bg-yellow-50 w-fit px-2 py-0.5 rounded-lg">
+                                 <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                                 <span className="text-[10px] font-black text-yellow-600">{driver.rating}</span>
+                               </div>
+                            </div>
+                         </div>
+                         
+                         <div className="space-y-3 mb-6 bg-teal-50/30 p-5 rounded-[28px] border border-teal-50/50">
+                            <div className="flex justify-between items-center text-[10px] font-bold">
+                               <span className="opacity-40 uppercase tracking-widest text-teal-800">Vehículo</span>
+                               <span className="text-teal-600">{driver.vehicle}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] font-bold">
+                               <span className="opacity-40 uppercase tracking-widest text-teal-800">Viajes hoy</span>
+                               <span className="text-gray-600">{7 + i}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] font-bold">
+                               <span className="opacity-40 uppercase tracking-widest text-teal-800">Ganancias hoy</span>
+                               <span className="text-green-600 font-black">${(driverEarnings + (i * 15)).toFixed(2)}</span>
+                            </div>
+                         </div>
+
+                         <div className="flex gap-2">
+                            <button 
+                              onClick={() => setSelectedAdminDriver(driver)}
+                              className="flex-1 py-4 bg-white text-teal-600 border border-teal-100 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-teal-50 transition-all"
+                            >
+                               Ver Detalles
+                            </button>
+                            <button 
+                              onClick={() => {
+                                setAdminActiveTab('tickets');
+                                setSelectedAdminTicket({
+                                  id: `TKT-D${i}`,
+                                  from: driver.name,
+                                  role: 'Conductor',
+                                  subject: 'Consulta Administrativa',
+                                  status: 'Abierto',
+                                  time: 'Ahora'
+                                });
+                              }}
+                              className="flex-1 py-4 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-teal-500/20 hover:brightness-110 transition-all"
+                            >
+                              Contactar
+                            </button>
+                         </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {adminActiveTab === 'businesses' && (
+              <motion.div 
+                key="businesses"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-8"
+              >
+                <div className="flex items-center justify-between">
+                   <h3 className="text-xl font-black">Socios de Negocio</h3>
+                   <div className="flex gap-4">
+                      <div className="px-6 py-3 bg-white rounded-2xl flex items-center gap-3 border-2 border-teal-50 group focus-within:border-teal-200 transition-all shadow-sm shadow-teal-50/50">
+                         <Search className="w-5 h-5 text-teal-400 opacity-40 group-focus-within:opacity-100" />
+                         <input 
+                          type="text" 
+                          placeholder="Buscar negocio..." 
+                          value={adminSearchQuery}
+                          onChange={(e) => setAdminSearchQuery(e.target.value)}
+                          className="bg-transparent border-none outline-none text-sm font-bold text-gray-700 placeholder:text-gray-300 w-64" 
+                         />
+                      </div>
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowAddBusinessModal(true)}
+                        className="px-8 py-3 bg-teal-50 text-teal-500 border-2 border-teal-100 rounded-2xl text-xs font-black shadow-lg shadow-teal-100/50 hover:bg-teal-500 hover:text-white hover:border-teal-500 transition-all"
+                      >
+                        + Nuevo Negocio
+                      </motion.button>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {ITEMS.filter(item => item.name.toLowerCase().includes(adminSearchQuery.toLowerCase())).slice(0, 4).map((biz) => {
+                    const appCommission = Math.floor(Math.random() * 5000) + 1000;
+                    const businessShare = Math.floor(appCommission * 0.85);
+                    const netAppProfit = appCommission - businessShare;
+
+                    return (
+                      <motion.div 
+                        key={biz.id} 
+                        whileHover={{ y: -5 }}
+                        className={`${current.card} p-10 rounded-[40px] hover:border-deli-teal/30 transition-all group`}
+                      >
+                        <div className="flex items-start justify-between mb-8">
+                           <div className="flex items-center gap-5">
+                             <img src={biz.image} className="w-20 h-20 rounded-[28px] object-cover shadow-xl group-hover:scale-105 transition-transform" />
+                             <div>
+                               <h3 
+                                onClick={() => setSelectedAdminBusiness(biz)}
+                                className="text-xl font-black hover:text-deli-teal cursor-pointer transition-colors"
+                               >
+                                {biz.name}
+                               </h3>
+                               <p className="text-xs font-bold text-deli-teal">{biz.category}</p>
+                             </div>
+                           </div>
+                           <div className="flex flex-col items-end gap-2">
+                             <span className="text-[10px] bg-green-500/10 text-green-600 px-3 py-1 rounded-full font-black uppercase tracking-widest leading-none">Activo</span>
+                             <button 
+                              onClick={() => setSelectedAdminBusiness(biz)}
+                              className="text-[10px] font-bold opacity-30 hover:opacity-100 transition-opacity flex items-center gap-1"
+                             >
+                               Detalles <ChevronRight className="w-3 h-3" />
+                              </button>
+                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                           <div className="p-6 bg-gray-50 rounded-[32px] border border-gray-100 shadow-sm">
+                             <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Ventas Brutas</p>
+                             <h4 className="text-sm font-black text-gray-700">${appCommission.toLocaleString()}</h4>
+                           </div>
+                           <div className="p-6 bg-orange-50/50 rounded-[32px] border border-orange-100 shadow-sm">
+                             <p className="text-[9px] font-black uppercase tracking-widest text-orange-500 mb-1">Pago Socio</p>
+                             <h4 className="text-sm font-black text-orange-600">${businessShare.toLocaleString()}</h4>
+                           </div>
+                           <div className="p-6 bg-rose-50/50 rounded-[32px] border border-rose-100 shadow-sm">
+                             <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-1">Costo Envíos</p>
+                             <h4 className="text-sm font-black text-rose-600">${Math.floor(netAppProfit * 0.4).toLocaleString()}</h4>
+                           </div>
+                           <div className="p-6 bg-teal-50/50 rounded-[32px] border border-teal-100 shadow-sm">
+                             <p className="text-[9px] font-black uppercase tracking-widest text-teal-600 mb-1">Utilidad Neta</p>
+                             <h4 className="text-sm font-black text-teal-700">${(netAppProfit - Math.floor(netAppProfit * 0.4)).toLocaleString()}</h4>
+                           </div>
+                        </div>
+
+                        <div className="space-y-5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-teal-600/60">Productos más vendidos</p>
+                            <span className="text-[10px] font-black text-teal-500 hover:underline cursor-pointer tracking-wider uppercase">Ver Catálogo</span>
+                          </div>
+                          <div className="space-y-3">
+                             {biz.products.slice(0, 2).map((p, i) => (
+                               <div key={i} className="flex items-center justify-between p-5 bg-white rounded-2xl border border-teal-50 shadow-sm hover:shadow-md hover:border-teal-100 transition-all group">
+                                 <div className="flex items-center gap-3">
+                                   <div className="w-2 h-2 rounded-full bg-teal-500 opacity-40 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_rgba(20,184,166,0.4)]" />
+                                   <span className="text-xs font-black text-gray-700 uppercase tracking-tight">{p.name}</span>
+                                 </div>
+                                 <div className="flex flex-col items-end">
+                                    <span className="text-[10px] font-black text-orange-500 bg-orange-50 px-3 py-1 rounded-lg border border-orange-100">{Math.floor(Math.random() * 50) + 10} vtas</span>
+                                    <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-tighter">Ranking #{i+1}</span>
+                                 </div>
+                               </div>
+                             ))}
+                          </div>
+                          <motion.button 
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            onClick={() => {
+                              const notif = {
+                                id: Date.now().toString(),
+                                title: 'Sugerencia Enviada',
+                                message: `Se ha enviado una notificación a ${biz.name} con sugerencias de optimización.`,
+                                time: 'Ahora',
+                                read: false
+                              };
+                              setNotifications(prev => [notif, ...prev]);
+                            }}
+                            className="w-full py-5 bg-teal-500 text-white rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] mt-4 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40 transition-all active:scale-[0.98]"
+                          >
+                             Sugerir Oferta / Especial
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+
+            {adminActiveTab === 'payments' && (
+              <motion.div 
+                key="payments"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-8"
+              >
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="p-8 bg-deli-teal text-white rounded-[32px] md:col-span-1 relative overflow-hidden group">
+                       <Zap className="absolute right-[-20px] bottom-[-20px] w-40 h-40 opacity-10 rotate-12" />
+                       <h4 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2 relative z-10">Total Pendiente</h4>
+                       <h3 className="text-4xl font-black tracking-tighter relative z-10">$15,400.00</h3>
+                       <button 
+                         onClick={() => {
+                           setShowProcessPayoutModal(true);
+                           setPayoutFlowStep('type-selection');
+                         }}
+                         className="mt-8 w-full py-4 bg-white text-deli-teal rounded-2xl text-xs font-black shadow-xl relative z-10 hover:scale-105 active:scale-95 transition-all"
+                       >
+                         Procesar Pago
+                       </button>
+                    </div>
+                    <div className={`${current.card} p-8 rounded-[32px] md:col-span-2 flex flex-col justify-center`}>
+                        <div className="flex items-center justify-between mb-8">
+                          <h4 className="text-sm font-black uppercase tracking-widest opacity-40">Liquidaciones</h4>
+                          <span className="text-[10px] font-bold opacity-30">Abril 2026</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-8">
+                           <div className="text-center group">
+                             <p className="text-[9px] font-black uppercase opacity-20 mb-2 group-hover:opacity-40 transition-opacity">Aprobados</p>
+                             <p className="text-3xl font-black text-green-600">85</p>
+                           </div>
+                           <div className="text-center border-x border-gray-100 dark:border-zinc-800 group">
+                             <p className="text-[9px] font-black uppercase opacity-20 mb-2 group-hover:opacity-40 transition-opacity">En Proceso</p>
+                             <p className="text-3xl font-black text-deli-orange">12</p>
+                           </div>
+                           <div className="text-center group">
+                             <p className="text-[9px] font-black uppercase opacity-20 mb-2 group-hover:opacity-40 transition-opacity">Reclamados</p>
+                             <p className="text-3xl font-black text-deli-red">3</p>
+                           </div>
+                        </div>
+                    </div>
+                 </div>
+
+                 <div className={`${current.card} rounded-[40px] overflow-hidden shadow-sm`}>
+                    <div className="p-8 border-b border-gray-100 dark:border-zinc-800 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-lg font-black">Cola de Pagos</h4>
+                        <div className="flex gap-2">
+                           <button className="px-4 py-2 bg-gray-100 rounded-xl text-[10px] font-bold">Descargar CSV</button>
+                           <button 
+                             onClick={() => setAdminShowPayoutHistory(!adminShowPayoutHistory)}
+                             className={`px-4 py-2 ${adminShowPayoutHistory ? 'bg-teal-50 text-teal-600 border border-teal-100' : 'bg-teal-500 text-white'} rounded-xl text-[10px] font-bold transition-all`}
+                           >
+                              {adminShowPayoutHistory ? 'Ver Cola Pendiente' : 'Ver Historial'}
+                           </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto no-scrollbar">
+                       <table className="w-full text-left">
+                         <thead className="bg-deli-teal/5">
+                           <tr>
+                             <th className="p-6 text-[10px] font-black uppercase opacity-40 tracking-widest whitespace-nowrap">Socio / Beneficiario</th>
+                             <th className="p-6 text-[10px] font-black uppercase opacity-40 tracking-widest whitespace-nowrap">Info Bancaria</th>
+                             <th className="p-6 text-[10px] font-black uppercase opacity-40 tracking-widest whitespace-nowrap">Monto</th>
+                             <th className="p-6 text-[10px] font-black uppercase opacity-40 tracking-widest whitespace-nowrap">Estado</th>
+                             <th className="p-6 text-[10px] font-black uppercase opacity-40 tracking-widest text-right whitespace-nowrap">Acción</th>
+                           </tr>
+                         </thead>
+                         <tbody className="divide-y divide-gray-50 dark:divide-zinc-800">
+                            {adminPayouts.filter(p => adminShowPayoutHistory ? p.status === 'Realizado' : p.status === 'Pendiente').map((p) => (
+                              <tr key={p.id} className="hover:bg-deli-teal/5 transition-all group">
+                                <td className="p-6">
+                                   <div className="flex items-center gap-3">
+                                      <div className={`p-3 rounded-2xl ${p.role === 'Negocio' ? 'bg-deli-dark text-white' : 'bg-deli-orange text-white'} shadow-md`}>
+                                        {p.role === 'Negocio' ? <Store className="w-5 h-5" /> : <Car className="w-5 h-5" />}
+                                      </div>
+                                      <div>
+                                        <p className="text-sm font-black group-hover:text-deli-teal transition-colors cursor-pointer">{p.name}</p>
+                                        <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest">{p.role}</p>
+                                      </div>
+                                   </div>
+                                </td>
+                                <td className="p-6">
+                                   <p className="text-xs font-bold leading-none mb-1">{p.bank}</p>
+                                   <p className="text-[10px] opacity-40 font-mono tracking-tighter">{p.account}</p>
+                                </td>
+                                <td className="p-6">
+                                   <p className="text-sm font-black text-deli-dark dark:text-white leading-none">${p.amount.toLocaleString()}</p>
+                                   <p className="text-[9px] opacity-30 mt-1">Liquidación Semanal</p>
+                                </td>
+                                <td className="p-6">
+                                   <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest inline-block ${p.status === 'Realizado' ? 'bg-green-500/10 text-green-600' : 'bg-deli-orange/10 text-deli-orange'}`}>
+                                     {p.status}
+                                   </span>
+                                </td>
+                                <td className="p-6 text-right">
+                                   {p.status === 'Pendiente' ? (
+                                     <button 
+                                      onClick={() => {
+                                        setAdminPayouts(adminPayouts.map(pay => pay.id === p.id ? { ...pay, status: 'Realizado' } : pay));
+                                        const notif = {
+                                          id: Date.now().toString(),
+                                          title: '¡Pago Realizado!',
+                                          message: `Se ha transferido $${p.amount} a tu cuenta del ${p.bank}.`,
+                                          time: 'Ahora',
+                                          read: false
+                                        };
+                                        setNotifications(prev => [notif, ...prev]);
+                                      }}
+                                      className="p-4 bg-deli-teal shadow-lg shadow-deli-teal/30 text-white rounded-2xl hover:scale-110 active:scale-95 hover:rotate-3 transition-all"
+                                     >
+                                       <CheckCircle2 className="w-5 h-5" />
+                                     </button>
+                                   ) : (
+                                     <div className="p-4 bg-green-500/10 rounded-2xl inline-flex">
+                                       <Zap className="w-5 h-5 text-green-600 fill-current opacity-40" />
+                                     </div>
+                                   )}
+                                </td>
+                              </tr>
+                            ))}
+                         </tbody>
+                       </table>
+                    </div>
+                 </div>
+              </motion.div>
+            )}
+
+            {adminActiveTab === 'tickets' && (
+              <motion.div 
+                key="tickets"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="space-y-10"
+              >
+                  <div className="flex gap-4">
+                     {['Recientes', 'Abiertos', 'Cerrados', 'Archivo'].map((filter, i) => (
+                       <button 
+                        key={i} 
+                        onClick={() => setAdminTicketFilter(filter)}
+                        className={`px-8 py-3.5 rounded-[24px] text-xs font-black transition-all border-2 ${adminTicketFilter === filter ? 'bg-teal-50 text-teal-600 border-teal-100 shadow-lg shadow-teal-100/50' : 'bg-white dark:bg-zinc-800 border-gray-50 dark:border-zinc-800 text-gray-400 hover:border-teal-100/50 hover:bg-teal-50/30'}`}
+                       >
+                          {filter}
+                       </button>
+                     ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-10 min-h-[600px]">
+                    <div className="md:col-span-1 space-y-4 max-h-[70vh] overflow-y-auto pr-2 no-scrollbar">
+                      {adminTickets.filter(t => {
+                        if (adminTicketFilter === 'Recientes') return true;
+                        if (adminTicketFilter === 'Abiertos') return t.status === 'Abierto';
+                        if (adminTicketFilter === 'Cerrados') return t.status === 'Cerrado';
+                        if (adminTicketFilter === 'Archivo') return t.status === 'Archivado';
+                        return true;
+                      }).map((t) => (
+                        <button 
+                          key={t.id} 
+                          onClick={() => setSelectedAdminTicket(t)}
+                          className={`w-full text-left p-6 rounded-[32px] border-2 transition-all relative overflow-hidden group ${selectedAdminTicket?.id === t.id ? 'border-teal-400 bg-white shadow-xl shadow-teal-50' : 'border-gray-50 bg-white hover:border-teal-200 hover:bg-teal-50/20'}`}
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                             <div className={`p-2.5 rounded-xl ${t.role === 'Cliente' ? 'bg-teal-50 text-teal-500' : t.role === 'Conductor' ? 'bg-rose-50 text-rose-500' : 'bg-indigo-50 text-indigo-500'} transition-all`}>
+                               <MessageSquare className="w-4 h-4" />
+                             </div>
+                             <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">{t.id}</span>
+                          </div>
+                          <h4 className="text-sm font-bold mb-1 text-gray-800">{t.from}</h4>
+                          <p className="text-[11px] font-medium text-gray-400 truncate mb-4">{t.subject}</p>
+                          <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                            <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">{t.time}</span>
+                            <div className="flex items-center gap-2">
+                               <div className={`w-1.5 h-1.5 rounded-full ${t.status === 'Abierto' ? 'bg-teal-400' : t.status === 'Cerrado' ? 'bg-gray-200' : 'bg-rose-300'}`} />
+                               <span className={`text-[9px] font-black uppercase tracking-widest ${t.status === 'Abierto' ? 'text-teal-500' : 'text-gray-300'}`}>{t.status}</span>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="md:col-span-2">
+                       <div className="bg-white h-full rounded-[48px] overflow-hidden flex flex-col shadow-2xl shadow-gray-100/50 border border-teal-50">
+                          <div className="p-8 border-b border-teal-50 bg-white/80 backdrop-blur-xl flex items-center justify-between">
+                             <div className="flex items-center gap-5">
+                                <div className={`w-14 h-14 rounded-[22px] ${selectedAdminTicket?.role === 'Conductor' ? 'bg-rose-50 text-rose-400' : selectedAdminTicket?.role === 'Negocio' ? 'bg-indigo-50 text-indigo-400' : 'bg-teal-50 text-teal-400'} flex items-center justify-center font-black text-xl shadow-inner relative`}>
+                                   {selectedAdminTicket ? selectedAdminTicket.from[0] : 'S'}
+                                   <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-teal-400 border-2 border-white rounded-full" />
+                                </div>
+                                <div>
+                                   <h4 className="text-lg font-black text-gray-800">{selectedAdminTicket ? selectedAdminTicket.from : 'Soporte'}</h4>
+                                   <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">{selectedAdminTicket ? `${selectedAdminTicket.role} • ${selectedAdminTicket.id}` : 'Seleccione un ticket'}</p>
+                                </div>
+                             </div>
+                             <div className="flex gap-2">
+                                <motion.button whileTap={{ scale: 0.95 }} className="w-12 h-12 flex items-center justify-center bg-teal-50/20 rounded-2xl text-teal-400 hover:bg-teal-50 transition-all border border-teal-50/50">
+                                   <Phone className="w-5 h-5" />
+                                </motion.button>
+                                {selectedAdminTicket && selectedAdminTicket.status === 'Abierto' && (
+                                  <motion.button 
+                                    whileTap={{ scale: 0.95 }} 
+                                    onClick={() => {
+                                      setAdminTickets(prev => prev.map(t => t.id === selectedAdminTicket.id ? { ...t, status: 'Cerrado' } : t));
+                                      setSelectedAdminTicket({ ...selectedAdminTicket, status: 'Cerrado' });
+                                    }}
+                                    className="px-6 py-3 bg-rose-50 text-rose-500 rounded-2xl text-[9px] font-black uppercase tracking-widest border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                                  >
+                                     Finalizar
+                                  </motion.button>
+                                )}
+                                {selectedAdminTicket && (selectedAdminTicket.status === 'Cerrado' || selectedAdminTicket.status === 'Archivado') && (
+                                  <motion.button 
+                                    whileTap={{ scale: 0.95 }} 
+                                    onClick={() => {
+                                      setAdminTickets(prev => prev.map(t => t.id === selectedAdminTicket.id ? { ...t, status: 'Archivado' } : t));
+                                      setSelectedAdminTicket({ ...selectedAdminTicket, status: 'Archivado' });
+                                    }}
+                                    className={`px-6 py-3 border ${selectedAdminTicket.status === 'Archivado' ? 'bg-gray-50 text-gray-300 border-gray-100' : 'bg-indigo-50 text-indigo-500 border-indigo-100'} rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all`}
+                                    disabled={selectedAdminTicket.status === 'Archivado'}
+                                  >
+                                     {selectedAdminTicket.status === 'Archivado' ? 'Archivado' : 'Guardar en Archivo'}
+                                  </motion.button>
+                                )}
+                                <motion.button whileTap={{ scale: 0.95 }} className="w-12 h-12 flex items-center justify-center bg-teal-400 text-white rounded-2xl shadow-lg shadow-teal-100">
+                                   <MessageSquare className="w-5 h-5" />
+                                </motion.button>
+                             </div>
+                          </div>
+                          
+                          <div className="flex-1 p-10 space-y-8 overflow-y-auto no-scrollbar bg-teal-50/10">
+                             {selectedAdminTicket ? (
+                               <>
+                                 <div className="flex justify-start">
+                                    <div className="max-w-[85%] bg-white p-6 rounded-[32px] rounded-tl-none border border-teal-50 shadow-sm">
+                                       <p className="text-sm font-medium leading-relaxed text-gray-700">
+                                         {selectedAdminTicket.id === 'TKT-001' ? 'Hola soporte, mi pedido #ORD-7754 fue cobrado dos veces en mi tarjeta Visa terminada en 4242. Me gustaría recibir el reembolso de la transacción duplicada.' : 
+                                          selectedAdminTicket.id === 'TKT-002' ? 'No puedo retirar mis ganancias, me sale un error de conexión al intentar vincular mi cuenta de banco.' :
+                                          'Sugerencia: Deberían agregar una categoría dedicada solo a mascotas en el menú principal.'}
+                                       </p>
+                                       <div className="flex items-center gap-3 mt-4">
+                                          <span className="text-[9px] font-bold opacity-30 uppercase tracking-widest">{selectedAdminTicket.time}</span>
+                                          <div className="w-1 h-1 bg-teal-100 rounded-full" />
+                                          <span className="text-[9px] font-black text-teal-400 uppercase tracking-widest">App Client</span>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 
+                                 {selectedAdminTicket.status === 'Cerrado' && (
+                                   <div className="flex justify-end">
+                                      <div className="max-w-[85%] bg-teal-50 text-teal-600 p-6 rounded-[32px] rounded-tr-none border border-teal-100 shadow-sm">
+                                         <p className="text-sm font-bold leading-relaxed">Entendido. Hemos procesado su solicitud con éxito. Verá el ajuste en su historial en unos minutos.</p>
+                                         <span className="text-[9px] font-black opacity-50 mt-4 block text-right tracking-widest uppercase italic">Centro de Soporte • 08:20 PM</span>
+                                      </div>
+                                   </div>
+                                 )}
+                               </>
+                             ) : (
+                               <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
+                                  <div className="w-24 h-24 bg-teal-50 rounded-full flex items-center justify-center mb-6">
+                                    <MessageSquare className="w-12 h-12 text-teal-300" />
+                                  </div>
+                                  <h4 className="text-2xl font-black text-teal-800/30">Bandeja de Soporte</h4>
+                                  <p className="text-sm font-bold text-teal-800/20">Selecciona una conversación</p>
+                               </div>
+                             )}
+                          </div>
+
+                          <div className="p-10 bg-white border-t border-teal-50 flex gap-5 items-center">
+                             <div className="flex-1 relative group">
+                                <input 
+                                  type="text" 
+                                  placeholder="Escribe tu respuesta..." 
+                                  className="w-full p-6 bg-teal-50/20 rounded-[30px] text-sm font-bold outline-none border-2 border-transparent focus:border-teal-100 focus:bg-white transition-all shadow-inner placeholder:text-teal-800/30" 
+                                />
+                                <div className="absolute right-6 top-1/2 -translate-y-1/2 flex gap-4 opacity-30 group-focus-within:opacity-100 transition-opacity">
+                                   <Plus className="w-6 h-6 text-teal-400 hover:text-teal-600 cursor-pointer" />
+                                </div>
+                             </div>
+                             <motion.button 
+                               whileHover={{ scale: 1.02 }}
+                               whileTap={{ scale: 0.98 }}
+                               className="w-20 h-20 bg-teal-400 text-white rounded-[30px] flex items-center justify-center shadow-lg shadow-teal-100 border border-transparent transition-all"
+                             >
+                                <Send className="w-6 h-6" />
+                             </motion.button>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Details Overlays */}
+          <AnimatePresence>
+            {showAddDriverModal && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-teal-900/10"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="bg-white w-full max-w-3xl rounded-[48px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-teal-50"
+                >
+                  <div className="p-10 border-b border-teal-50 flex items-center justify-between">
+                     <div>
+                        <h3 className="text-2xl font-black text-gray-800">Registrar Nuevo Conductor</h3>
+                        <p className="text-xs font-bold text-teal-400 uppercase tracking-widest">Formulario de Afiliación Oficial</p>
+                     </div>
+                     <button onClick={() => setShowAddDriverModal(false)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all">
+                        <Plus className="w-7 h-7 rotate-45" />
+                     </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-12 space-y-10 no-scrollbar">
+                     <div className="grid grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                           <label className="text-[10px] font-black uppercase tracking-widest text-teal-600 block px-2">Datos Personales</label>
+                           <input type="text" placeholder="Nombre Completo" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <input type="email" placeholder="Correo Electrónico" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <input type="tel" placeholder="Teléfono de Contacto" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <input type="text" placeholder="Cédula de Identidad" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                        </div>
+                        <div className="space-y-4">
+                           <label className="text-[10px] font-black uppercase tracking-widest text-teal-600 block px-2">Datos del Vehículo</label>
+                           <select className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all">
+                              <option>Seleccionar Tipo de Vehículo</option>
+                              <option>Motocicleta / Pasola</option>
+                              <option>Automóvil / Sedán</option>
+                              <option>Bicicleta</option>
+                           </select>
+                           <input type="text" placeholder="Marca y Modelo (Ej: Honda Civic)" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <input type="text" placeholder="Número de Placa" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                        </div>
+                     </div>
+
+                     <div className="bg-teal-50/30 p-10 rounded-[40px] border-2 border-teal-100/50 space-y-6">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-teal-700">Configuración de Pagos (Obligatorio)</h4>
+                        <div className="grid grid-cols-3 gap-6">
+                           <input type="text" placeholder="Entidad Bancaria" className="w-full p-5 bg-white rounded-2xl border border-teal-100 outline-none font-bold" />
+                           <input type="text" placeholder="Número de Cuenta" className="w-full p-5 bg-white rounded-2xl border border-teal-100 outline-none font-bold" />
+                           <select className="w-full p-5 bg-white rounded-2xl border border-teal-100 outline-none font-bold">
+                              <option>Tipo de Cuenta</option>
+                              <option>Ahorros</option>
+                              <option>Corriente</option>
+                           </select>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="p-10 border-t border-teal-50 bg-gray-50/30 flex gap-4">
+                     <button onClick={() => setShowAddDriverModal(false)} className="px-10 py-5 bg-white text-gray-400 rounded-3xl text-sm font-black uppercase tracking-widest border border-gray-100">Cancelar</button>
+                     <button 
+                        onClick={() => {
+                           setShowAddDriverModal(false);
+                           const notif = {
+                              id: Date.now().toString(),
+                              title: '¡Socio Registrado!',
+                              message: 'El nuevo conductor ha sido añadido a la plataforma exitosamente.',
+                              time: 'Ahora',
+                              read: false
+                           };
+                           setNotifications(prev => [notif, ...prev]);
+                        }}
+                        className="flex-1 py-5 bg-teal-500 text-white rounded-3xl text-sm font-black uppercase tracking-widest shadow-xl shadow-teal-500/20"
+                     >
+                        Confirmar Registro y Alta
+                     </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+            {showAddBusinessModal && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-teal-900/10"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="bg-white w-full max-w-3xl rounded-[48px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-teal-50"
+                >
+                  <div className="p-10 border-b border-teal-50 flex items-center justify-between">
+                     <div>
+                        <h3 className="text-2xl font-black text-gray-800">Registrar Nuevo Socio de Negocio</h3>
+                        <p className="text-xs font-bold text-teal-400 uppercase tracking-widest">Alianza Comercial Oficial</p>
+                     </div>
+                     <button onClick={() => setShowAddBusinessModal(false)} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all">
+                        <Plus className="w-7 h-7 rotate-45" />
+                     </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-12 space-y-10 no-scrollbar">
+                     <div className="grid grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                           <label className="text-[10px] font-black uppercase tracking-widest text-teal-600 block px-2">Datos del Establecimiento</label>
+                           <input type="text" placeholder="Nombre Comercial" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <select className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all">
+                              <option>Categoría de Negocio</option>
+                              <option>Restaurante</option>
+                              <option>Farmacia</option>
+                              <option>Supermercado</option>
+                              <option>Tienda de Conveniencia</option>
+                           </select>
+                           <input type="text" placeholder="Dirección Física" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <input type="text" placeholder="RNC (Registro Nacional de Contribuyente)" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                        </div>
+                        <div className="space-y-4">
+                           <label className="text-[10px] font-black uppercase tracking-widest text-teal-600 block px-2">Representante Legal</label>
+                           <input type="text" placeholder="Nombre del Representante" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <input type="email" placeholder="Correo Corporativo" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                           <input type="tel" placeholder="Teléfono Flota / Contacto" className="w-full p-6 bg-gray-50 rounded-3xl border-2 border-transparent focus:border-teal-100 focus:bg-white outline-none font-bold transition-all" />
+                        </div>
+                     </div>
+
+                     <div className="bg-teal-50/30 p-10 rounded-[40px] border-2 border-teal-100/50 space-y-6">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-teal-700">Canal de Liquidación Bancaria</h4>
+                        <div className="grid grid-cols-3 gap-6">
+                           <input type="text" placeholder="Banco" className="w-full p-5 bg-white rounded-2xl border border-teal-100 outline-none font-bold" />
+                           <input type="text" placeholder="Número de Cuenta" className="w-full p-5 bg-white rounded-2xl border border-teal-100 outline-none font-bold" />
+                           <select className="w-full p-5 bg-white rounded-2xl border border-teal-100 outline-none font-bold">
+                              <option>Tipo de Cuenta</option>
+                              <option>Ahorros</option>
+                              <option>Corriente</option>
+                           </select>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="p-10 border-t border-teal-50 bg-gray-50/30 flex gap-4">
+                     <button onClick={() => setShowAddBusinessModal(false)} className="px-10 py-5 bg-white text-gray-400 rounded-3xl text-sm font-black uppercase tracking-widest border border-gray-100">Cancelar</button>
+                     <button 
+                        onClick={() => {
+                           setShowAddBusinessModal(false);
+                           const notif = {
+                              id: Date.now().toString(),
+                              title: '¡Negocio Afiliado!',
+                              message: 'El nuevo socio de negocio ha sido integrado exitosamente.',
+                              time: 'Ahora',
+                              read: false
+                           };
+                           setNotifications(prev => [notif, ...prev]);
+                        }}
+                        className="flex-1 py-5 bg-teal-500 text-white rounded-3xl text-sm font-black uppercase tracking-widest shadow-xl shadow-teal-500/20"
+                     >
+                        Finalizar Registro de Socio
+                     </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+            {selectedAdminBusiness && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-teal-900/10"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="bg-white w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-teal-50"
+                >
+                  <div className="p-10 border-b border-teal-50 flex items-center justify-between bg-white/80 backdrop-blur-md">
+                    <div className="flex items-center gap-6">
+                       <img src={selectedAdminBusiness.image} className="w-20 h-20 rounded-[30px] object-cover shadow-2xl" />
+                       <div>
+                         <h3 className="text-2xl font-black text-gray-800">{selectedAdminBusiness.name}</h3>
+                         <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-teal-500 uppercase tracking-widest">{selectedAdminBusiness.category}</span>
+                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                            <span className="text-xs font-bold text-gray-400">Socio Activo</span>
+                         </div>
+                       </div>
+                    </div>
+                    <button onClick={() => setSelectedAdminBusiness(null)} className="p-4 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all group">
+                      <Plus className="w-7 h-7 rotate-45" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar bg-gray-50/10">
+                    <section className="space-y-6">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-teal-600">Documentación y Legal</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         {[
+                           { label: 'RNC / Registro', val: '131-45678-2', icon: ShieldCheck, color: 'text-teal-500' },
+                           { label: 'Fecha Registro', val: '14 de Mayo, 2023', icon: History, color: 'text-orange-500' },
+                           { label: 'Dirección Fiscal', val: 'Av. Winston Churchill #45, Santo Domingo', icon: MapPin, color: 'text-indigo-500' },
+                           { label: 'Representante', val: 'Manuel Pérez Díaz', icon: User, color: 'text-rose-500' }
+                         ].map((doc, i) => (
+                           <div key={i} className="p-6 bg-white rounded-3xl border border-teal-50/50 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+                              <div className="w-12 h-12 bg-gray-50 rounded-[18px] flex items-center justify-center border border-gray-100">
+                                <doc.icon className={`w-5 h-5 ${doc.color}`} />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black uppercase text-gray-400 leading-none mb-1.5">{doc.label}</p>
+                                <p className="text-sm font-black text-gray-700">{doc.val}</p>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-teal-600">Información para Pagos</h4>
+                      <div className="p-10 bg-gradient-to-br from-teal-50/50 to-white border-2 border-teal-100 rounded-[48px] shadow-sm relative overflow-hidden group">
+                         <DollarSign className="absolute -right-6 -bottom-6 w-32 h-32 text-teal-200/20 rotate-12" />
+                         <div className="flex items-center gap-8 relative z-10">
+                            <div className="w-20 h-20 bg-white rounded-[28px] flex items-center justify-center shadow-xl border border-teal-50">
+                               <Building2 className="w-10 h-10 text-teal-500" />
+                            </div>
+                            <div className="space-y-2">
+                               <p className="text-[10px] font-black uppercase text-teal-400 tracking-widest">Cuenta de Liquidación Principal</p>
+                               <h5 className="text-2xl font-black text-teal-900 leading-none">{partnerProfile.bank}</h5>
+                               <div className="flex items-center gap-4 pt-1">
+                                  <div className="bg-white px-4 py-2 rounded-xl border border-teal-100">
+                                     <span className="text-[10px] font-bold text-gray-400 mr-2 uppercase">Cuenta:</span>
+                                     <span className="text-sm font-mono font-black text-teal-600">{partnerProfile.accountNumber}</span>
+                                  </div>
+                                  <div className="bg-white px-4 py-2 rounded-xl border border-teal-100">
+                                     <span className="text-[10px] font-bold text-gray-400 mr-2 uppercase">Tipo:</span>
+                                     <span className="text-xs font-black text-gray-700">{partnerProfile.accountType}</span>
+                                  </div>
+                               </div>
+                            </div>
+                         </div>
+                         <div className="mt-8 flex gap-3 relative z-10">
+                            <span className="text-[10px] bg-teal-500/10 text-teal-600 px-4 py-2 rounded-xl font-black uppercase tracking-widest border border-teal-100 italic">Verificada por Admin</span>
+                            <span className="text-[10px] bg-green-500/10 text-green-600 px-4 py-2 rounded-xl font-black uppercase tracking-widest border border-green-100">Pagos al día</span>
+                         </div>
+                      </div>
+                    </section>
+                  </div>
+
+                  <div className="p-10 border-t border-teal-50 bg-white flex gap-4">
+                     <button className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-3xl text-sm font-black uppercase tracking-widest border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-xl shadow-rose-100/50">Suspender Negocio</button>
+                     <button className="flex-1 py-5 bg-teal-500 text-white rounded-3xl text-sm font-black uppercase tracking-widest shadow-xl shadow-teal-500/20 transition-all">Editar Información</button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {selectedAdminDriver && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-teal-900/10"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="bg-white w-full max-w-2xl rounded-[48px] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col border border-teal-50"
+                >
+                  <div className="p-10 border-b border-teal-50 flex items-center justify-between bg-white/80 backdrop-blur-md">
+                    <div className="flex items-center gap-6">
+                       <div className="relative">
+                          <img src={selectedAdminDriver.photo} className="w-20 h-20 rounded-[30px] object-cover shadow-2xl" />
+                          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-500 border-4 border-white rounded-full" />
+                       </div>
+                       <div>
+                         <h3 className="text-2xl font-black text-gray-800">{selectedAdminDriver.name}</h3>
+                         <div className="flex items-center gap-2">
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-sm font-black text-gray-400">{selectedAdminDriver.rating} • Conductor Verificado</span>
+                         </div>
+                       </div>
+                    </div>
+                    <button onClick={() => setSelectedAdminDriver(null)} className="p-4 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all group">
+                      <Plus className="w-7 h-7 rotate-45" />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar bg-gray-50/10">
+                    <section className="space-y-6">
+                      <div className="flex items-center justify-between">
+                         <h4 className="text-xs font-black uppercase tracking-widest text-teal-600">Perfil del Socio</h4>
+                         <span className="text-[10px] font-bold text-teal-400 italic">ID: {selectedAdminDriver.cedula || 'TKT-1002'}</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         {[
+                           { label: 'Cédula / ID', val: selectedAdminDriver.cedula || '001-1884562-4', icon: User, color: 'text-teal-500' },
+                           { label: 'Teléfono', val: selectedAdminDriver.phone || '809-555-0123', icon: Phone, color: 'text-orange-500' },
+                           { label: 'Correo', val: selectedAdminDriver.email || 'conductor@delieatgo.com', icon: Mail, color: 'text-indigo-500' },
+                           { label: 'Estado Civil', val: 'Soltero', icon: History, color: 'text-rose-500' }
+                         ].map((doc, i) => (
+                           <div key={i} className="p-6 bg-white rounded-3xl border border-teal-50/50 flex items-center gap-4 shadow-sm hover:shadow-md transition-all">
+                              <div className="w-12 h-12 bg-gray-50 rounded-[18px] flex items-center justify-center border border-gray-100">
+                                <doc.icon className={`w-5 h-5 ${doc.color}`} />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black uppercase text-gray-400 leading-none mb-1.5">{doc.label}</p>
+                                <p className="text-sm font-black text-gray-700">{doc.val}</p>
+                              </div>
+                           </div>
+                         ))}
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-teal-600">Vehículo y Seguridad</h4>
+                      <div className="p-8 rounded-[40px] border-2 border-teal-50 relative overflow-hidden bg-white shadow-sm group">
+                         <div className="relative z-10 flex justify-between items-center mb-8">
+                            <div className="flex items-center gap-5">
+                               <div className="w-14 h-14 bg-teal-50 text-teal-500 rounded-[20px] flex items-center justify-center shadow-inner">
+                                  <Car className="w-8 h-8" />
+                               </div>
+                               <div>
+                                  <h5 className="text-xl font-black text-gray-800">{selectedAdminDriver.vehicle}</h5>
+                                  <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest">Placa: {selectedAdminDriver.plate || 'A-22452'} • Seguro Vigente</p>
+                               </div>
+                            </div>
+                            <motion.button whileTap={{ scale: 0.95 }} className="px-5 py-3 bg-teal-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-teal-500/20">Ver Seguro</motion.button>
+                         </div>
+                         <div className="relative z-10 grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center">
+                               <span className="text-[9px] font-black uppercase text-gray-400 mb-1">Color</span>
+                               <span className="text-xs font-bold text-gray-700">Gris Metalizado</span>
+                            </div>
+                            <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex flex-col items-center justify-center text-center">
+                               <span className="text-[9px] font-black uppercase text-gray-400 mb-1">Cilindraje</span>
+                               <span className="text-xs font-bold text-gray-700">150cc</span>
+                            </div>
+                         </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-6">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-teal-600">Información para Pagos</h4>
+                      <div className="p-10 bg-gradient-to-br from-teal-50/50 to-white border-2 border-teal-100 rounded-[48px] shadow-sm relative overflow-hidden group">
+                         <DollarSign className="absolute -right-6 -bottom-6 w-32 h-32 text-teal-200/20 rotate-12" />
+                         <div className="flex items-center gap-8 relative z-10">
+                           <div className="w-20 h-20 bg-white rounded-[28px] flex items-center justify-center shadow-xl border border-teal-50">
+                              <Building2 className="w-10 h-10 text-teal-500" />
+                           </div>
+                           <div className="space-y-2">
+                              <p className="text-[10px] font-black uppercase text-teal-400 tracking-widest">Entidad Bancaria Solicitada</p>
+                              <h5 className="text-2xl font-black text-teal-900 leading-none">{selectedAdminDriver.bank || 'Banreservas'}</h5>
+                              <div className="flex items-center gap-4 pt-1">
+                                 <div className="bg-white px-4 py-2 rounded-xl border border-teal-100">
+                                    <span className="text-[10px] font-bold text-gray-400 mr-2 uppercase">Cuenta:</span>
+                                    <span className="text-sm font-mono font-black text-teal-600">{selectedAdminDriver.accountNumber || '445229001'}</span>
+                                 </div>
+                                 <div className="bg-white px-4 py-2 rounded-xl border border-teal-100">
+                                    <span className="text-[10px] font-bold text-gray-400 mr-2 uppercase">Tipo:</span>
+                                    <span className="text-xs font-black text-gray-700">{selectedAdminDriver.accountType || 'Ahorros'}</span>
+                                 </div>
+                              </div>
+                           </div>
+                         </div>
+                      </div>
+                    </section>
+                  </div>
+
+                  <div className="p-10 border-t border-teal-50 bg-white flex gap-4">
+                     <motion.button 
+                       whileHover={{ scale: 1.02 }}
+                       whileTap={{ scale: 0.98 }}
+                       className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-3xl text-sm font-black uppercase tracking-widest border border-rose-100 hover:bg-rose-500 hover:text-white transition-all shadow-xl shadow-rose-100/50"
+                     >
+                       Sancionar / Bloquear
+                     </motion.button>
+                     <motion.button 
+                       whileHover={{ scale: 1.02 }}
+                       whileTap={{ scale: 0.98 }}
+                       onClick={() => {
+                          setAdminActiveTab('tickets');
+                          setSelectedAdminDriver(null);
+                       }}
+                       className="flex-1 py-5 bg-teal-500 text-white rounded-3xl text-sm font-black uppercase tracking-widest shadow-xl shadow-teal-500/20"
+                     >
+                       Llamada Directa
+                     </motion.button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+            {showProcessPayoutModal && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] flex items-center justify-center p-6 backdrop-blur-xl bg-black/40"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, y: 20 }}
+                  animate={{ scale: 1, y: 0 }}
+                  className="bg-white w-full max-w-xl rounded-[48px] shadow-2xl overflow-hidden border border-teal-50"
+                >
+                  <div className="p-8 border-b border-teal-50 flex items-center justify-between">
+                    <h3 className="text-xl font-black">Procesar Nuevo Pago</h3>
+                    <button 
+                      onClick={() => setShowProcessPayoutModal(false)}
+                      className="p-3 bg-gray-50 rounded-2xl hover:bg-rose-50 hover:text-rose-500 transition-all"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div className="p-8">
+                    {payoutFlowStep === 'type-selection' && (
+                      <div className="space-y-6">
+                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest text-center">Seleccione el Tipo de Socio</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          {[
+                            { id: 'Conductor', icon: Car, color: 'bg-orange-50 text-orange-500 border-orange-100' },
+                            { id: 'Negocio', icon: Store, color: 'bg-indigo-50 text-indigo-500 border-indigo-100' }
+                          ].map(type => (
+                            <button
+                              key={type.id}
+                              onClick={() => {
+                                setSelectedPayoutPartnerType(type.id as any);
+                                setPayoutFlowStep('entity-selection');
+                              }}
+                              className={`p-10 rounded-[40px] border-2 uppercase font-black text-xs tracking-widest flex flex-col items-center gap-4 transition-all hover:scale-105 active:scale-95 ${type.color}`}
+                            >
+                              <type.icon className="w-10 h-10" />
+                              {type.id}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {payoutFlowStep === 'entity-selection' && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-4 mb-4">
+                           <button onClick={() => setPayoutFlowStep('type-selection')} className="p-2 hover:bg-gray-100 rounded-lg">
+                              <ChevronRight className="w-5 h-5 rotate-180" />
+                           </button>
+                           <p className="text-sm font-bold text-gray-800 uppercase tracking-widest">Seleccionar {selectedPayoutPartnerType}</p>
+                        </div>
+                        <div className="max-h-[400px] overflow-y-auto space-y-3 no-scrollbar">
+                           {(selectedPayoutPartnerType === 'Negocio' ? ITEMS : ORDERS_DATA.map(o => o.driver).filter((v, i, a) => v && a.findIndex(t => t?.name === v.name) === i)).map((entity: any, i) => (
+                             <button
+                               key={i}
+                               onClick={() => {
+                                 setSelectedPayoutEntity(entity);
+                                 setPayoutFlowStep('summary');
+                               }}
+                               className="w-full flex items-center justify-between p-5 bg-gray-50 hover:bg-teal-50 rounded-3xl border border-transparent hover:border-teal-100 transition-all group"
+                             >
+                               <div className="flex items-center gap-4 text-left">
+                                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-white shadow-sm">
+                                     <img src={entity.image || entity.photo} className="w-full h-full object-cover" />
+                                  </div>
+                                  <div>
+                                     <p className="text-sm font-black text-gray-800">{entity.name}</p>
+                                     <p className="text-[10px] font-bold text-gray-400 uppercase">{selectedPayoutPartnerType === 'Negocio' ? entity.category : entity.vehicle}</p>
+                                  </div>
+                               </div>
+                               <ChevronRight className="w-5 h-5 opacity-20 group-hover:opacity-100 transition-opacity" />
+                             </button>
+                           ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {payoutFlowStep === 'summary' && selectedPayoutEntity && (
+                      <div className="space-y-8">
+                         <div className="p-8 bg-teal-500 rounded-[40px] text-white relative overflow-hidden">
+                            <Zap className="absolute right-[-20px] bottom-[-20px] w-32 h-32 opacity-10" />
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Total Acumulado</p>
+                            <h4 className="text-4xl font-black tracking-tighter">${(Math.floor(Math.random() * 8000) + 1000).toLocaleString()}.00</h4>
+                            <div className="mt-6 pt-6 border-t border-white/10 flex items-center gap-4">
+                               <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white/20">
+                                  <img src={selectedPayoutEntity.image || selectedPayoutEntity.photo} className="w-full h-full object-cover" />
+                               </div>
+                               <div>
+                                  <p className="text-sm font-black">{selectedPayoutEntity.name}</p>
+                                  <p className="text-[10px] font-bold tracking-widest uppercase opacity-60">{selectedPayoutPartnerType}</p>
+                               </div>
+                            </div>
+                         </div>
+                         
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Banco</p>
+                               <p className="text-sm font-black text-gray-700">Banco Popular</p>
+                            </div>
+                            <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                               <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Cuenta</p>
+                               <p className="text-sm font-black text-gray-700">****-9604</p>
+                            </div>
+                         </div>
+
+                         <button
+                           onClick={() => {
+                             const newPayout = {
+                               id: `PAY-${Date.now()}`,
+                               name: selectedPayoutEntity.name,
+                               role: (selectedPayoutPartnerType === 'Negocio' ? 'Negocio' : 'Conductor') as any,
+                               amount: Math.floor(Math.random() * 8000) + 1000,
+                               bank: 'Banco Popular',
+                               account: '960456123',
+                               status: 'Pendiente' as any
+                             };
+                             setAdminPayouts(prev => [newPayout, ...prev]);
+                             setShowProcessPayoutModal(false);
+                             const notif = {
+                               id: Date.now().toString(),
+                               title: 'Nueva Liquidación en Cola',
+                               message: `Se ha añadido la liquidación de ${selectedPayoutEntity.name} a la cola de pagos.`,
+                               time: 'Ahora',
+                               read: false
+                             };
+                             setNotifications(prev => [notif, ...prev]);
+                           }}
+                           className="w-full py-5 bg-teal-500 text-white rounded-3xl text-sm font-black uppercase tracking-widest shadow-xl shadow-teal-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                         >
+                           Pasar a Cola de Pagos
+                         </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
       </div>
     );
   }
@@ -1067,7 +2370,7 @@ export default function App() {
           </main>
 
           {/* Driver Bottom Nav */}
-          <nav className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md ${mode === 'light' ? 'bg-white/95 border-t border-deli-teal/10' : 'bg-zinc-900/95 border-t border-deli-teal/10'} backdrop-blur-xl px-8 py-4 flex justify-between items-center z-50`}>
+          <nav className={`fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md ${mode === 'light' ? 'bg-white/95 border-t border-teal-100/30 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]' : 'bg-zinc-900/95 border-t border-teal-500/10'} backdrop-blur-xl px-10 py-6 flex justify-between items-center z-50 rounded-t-[40px]`}>
             {[
               { id: 'home', icon: Home, label: 'Inicio' },
               { id: 'history', icon: History, label: 'Ganancias' },
@@ -1076,10 +2379,10 @@ export default function App() {
               <button 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-1 transition-all ${activeTab === tab.id ? 'scale-110' : 'opacity-30 hover:opacity-100'}`}
+                className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === tab.id ? 'scale-110' : 'opacity-30 hover:opacity-100'}`}
               >
-                <tab.icon className={`w-6 h-6 ${activeTab === tab.id ? 'text-deli-teal fill-deli-teal/10' : 'text-deli-dark'}`} />
-                <span className={`text-[10px] font-bold ${activeTab === tab.id ? 'text-deli-teal' : 'text-deli-dark'}`}>{tab.label}</span>
+                <tab.icon className={`w-6 h-6 ${activeTab === tab.id ? 'text-teal-500' : 'text-gray-400'}`} />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${activeTab === tab.id ? 'text-teal-600' : 'text-gray-400'}`}>{tab.label}</span>
               </button>
             ))}
           </nav>
@@ -1179,13 +2482,15 @@ export default function App() {
                   };
                   setPartnerProducts(examples[type.id as BusinessType]);
                 }}
-                className={`flex items-center gap-4 p-5 ${current.card} rounded-[32px] group hover:border-deli-teal transition-all`}
+                className={`flex items-center gap-5 p-6 bg-white rounded-[40px] border-2 border-teal-50 hover:border-teal-400 hover:shadow-xl hover:shadow-teal-100/50 transition-all group`}
               >
-                <div className={`w-12 h-12 ${type.bg} rounded-2xl flex items-center justify-center`}>
-                  <type.icon className="w-6 h-6" />
+                <div className={`w-14 h-14 ${type.bg} rounded-[24px] flex items-center justify-center shadow-lg shadow-current/10`}>
+                  <type.icon className="w-7 h-7" />
                 </div>
-                <span className="text-lg font-bold">{type.id}</span>
-                <ChevronRight className="ml-auto w-5 h-5 opacity-20" />
+                <span className="text-xl font-black text-gray-800 tracking-tight">{type.id}</span>
+                <div className="ml-auto w-10 h-10 rounded-full border border-teal-100 flex items-center justify-center group-hover:bg-teal-500 group-hover:text-white transition-all shadow-sm">
+                   <ChevronRight className="w-5 h-5" />
+                </div>
               </motion.button>
             ))}
           </div>
@@ -1228,83 +2533,112 @@ export default function App() {
             {partnerActiveTab === 'dashboard' && (
               <div className="space-y-6">
                 {/* Earnings Card */}
-                <div className="p-6 bg-deli-dark text-white rounded-[32px] shadow-xl relative overflow-hidden">
+                <div className="p-10 bg-teal-500 rounded-[48px] shadow-2xl shadow-teal-500/20 relative overflow-hidden group">
                   <div className="relative z-10">
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Ventas Totales (Tarjeta)</p>
-                    <h2 className="text-4xl font-display font-black tracking-tighter mb-4">
-                      ${partnerEarnings.toFixed(2)}
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mb-2">Ventas Totales Netas</p>
+                    <h2 className="text-4xl font-black text-white tracking-tighter mb-6 flex items-baseline gap-2">
+                       <span className="text-xl opacity-60 font-medium font-sans">RD$</span>
+                       {partnerEarnings.toLocaleString()}
                     </h2>
-                    <div className="bg-white/10 backdrop-blur-md inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold">
-                      <Zap className="w-3 h-3 text-deli-teal fill-current" />
-                      <span>+12.5% vs semana pasada</span>
+                    <div className="bg-white/20 backdrop-blur-xl inline-flex items-center gap-3 px-5 py-2 rounded-2xl text-[10px] font-black text-white border border-white/20">
+                      <Zap className="w-3 h-3 text-yellow-400 fill-current" />
+                      <span className="uppercase tracking-widest">+12.5% vs semana pasada</span>
                     </div>
                   </div>
-                  <ShoppingBag className="absolute right-[-20px] bottom-[-20px] w-40 h-40 opacity-10 rotate-12" />
+                  <ShoppingBag className="absolute right-[-40px] bottom-[-40px] w-64 h-64 text-white/5 rotate-12 transition-transform group-hover:scale-110" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[60px] rounded-full" />
                 </div>
 
                 {/* Analysis/Stats */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <motion.div 
+                    whileHover={{ y: -4, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowTopProductsDetail(true)}
-                    className={`${current.card} p-5 rounded-[28px] cursor-pointer hover:border-deli-teal transition-all`}
+                    className="bg-white p-8 rounded-[40px] cursor-pointer border-2 border-teal-50 shadow-sm hover:shadow-xl hover:border-teal-200 transition-all group"
                   >
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">Más Vendidos</p>
-                    <h4 className="text-sm font-bold mb-1">Burger Deluxe</h4>
-                    <p className="text-[10px] text-deli-teal font-bold line-clamp-1">Ver detalles de productos...</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-teal-600/50 mb-4 group-hover:text-teal-600 transition-colors">Productos Estrella</p>
+                    <h4 className="text-lg font-black text-gray-800 mb-2">Burger Deluxe</h4>
+                    <div className="flex items-center gap-2 text-[10px] text-teal-500 font-black uppercase tracking-wider">
+                       Ver Analytics <ChevronRight className="w-3 h-3" />
+                    </div>
                   </motion.div>
-                  <div className={`${current.card} p-5 rounded-[28px]`}>
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-3">Preferencia</p>
-                    <h4 className="text-sm font-bold mb-1">Delivery</h4>
-                    <p className="text-[10px] text-deli-orange font-bold line-clamp-1">85% de los clientes</p>
+                  <div className="bg-white p-8 rounded-[40px] border-2 border-orange-50 shadow-sm relative overflow-hidden group">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-400/60 mb-4 group-hover:text-orange-500 transition-colors">Canal Favorito</p>
+                    <h4 className="text-lg font-black text-gray-800 mb-2">Delivery App</h4>
+                    <p className="text-[10px] text-orange-500 font-bold bg-orange-50 px-3 py-1 rounded-lg border border-orange-100 inline-block">85% Preferencia</p>
                   </div>
                 </div>
 
-                <AnimatePresence>
+                <AnimatePresence mode="wait">
                   {showTopProductsDetail && (
                     <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className={`${current.card} p-6 rounded-[32px]`}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="bg-white p-10 rounded-[48px] border-2 border-teal-100 shadow-2xl relative overflow-hidden"
                     >
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-sm font-bold">Resumen de Productos Top</h4>
-                        <button onClick={() => setShowTopProductsDetail(false)} className="text-[10px] font-bold text-deli-red px-2 py-1 bg-deli-red/5 rounded-lg uppercase">Cerrar</button>
+                      <div className="flex justify-between items-center mb-8 relative z-10">
+                        <div className="flex items-center gap-3">
+                           <div className="w-2 h-8 bg-teal-500 rounded-full" />
+                           <h4 className="text-xl font-black text-gray-800">Ranking Comercial</h4>
+                        </div>
+                        <button onClick={() => setShowTopProductsDetail(false)} className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-500 hover:text-white transition-all">
+                           <Plus className="w-6 h-6 rotate-45" />
+                        </button>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-4 relative z-10">
                         {partnerProducts.slice(0, 3).map((p, i) => (
-                          <div key={i} className="flex items-center justify-between p-3 bg-deli-dark/5 rounded-2xl">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs font-black opacity-20">#{i+1}</span>
-                              <p className="text-xs font-bold">{p.name}</p>
+                          <div key={i} className="flex items-center justify-between p-6 bg-white rounded-[32px] border-2 border-teal-50 hover:border-teal-100 hover:shadow-xl transition-all group">
+                            <div className="flex items-center gap-5">
+                              <div className="w-12 h-12 bg-teal-500 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-teal-500/20">
+                                {i+1}
+                              </div>
+                              <div>
+                                 <p className="text-sm font-black text-gray-800 tracking-tight">{p.name}</p>
+                                 <p className="text-[10px] font-bold text-teal-500 uppercase tracking-widest opacity-60">{p.category}</p>
+                              </div>
                             </div>
-                            <span className="text-[10px] font-bold text-deli-teal">{Math.floor(100 - i*20)} vtas</span>
+                            <div className="text-right">
+                               <span className="text-sm font-black text-orange-500">{Math.floor(100 - i*20)}</span>
+                               <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Pedidos</p>
+                            </div>
                           </div>
                         ))}
                       </div>
+                      <DollarSign className="absolute -left-12 -bottom-12 w-48 h-48 text-teal-500/5 rotate-12" />
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <div className={`${current.card} p-6 rounded-[32px]`}>
-                  <h4 className="text-sm font-bold mb-4">Rendimiento Semanal</h4>
-                  <div className="h-40 flex items-end justify-between gap-2 px-2 pb-6 relative">
+                <div className="bg-white p-10 rounded-[48px] border-2 border-teal-50 shadow-sm relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-8">
+                     <div>
+                        <h4 className="text-xl font-black text-gray-800">Rendimiento Semanal</h4>
+                        <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest">Actividad de los últimos 7 días</p>
+                     </div>
+                     <div className="flex gap-1">
+                        <div className="w-2 h-2 rounded-full bg-teal-500" />
+                        <div className="w-2 h-2 rounded-full bg-teal-100" />
+                     </div>
+                  </div>
+                  <div className="h-48 flex items-end justify-between gap-3 px-2 pb-8 relative">
                     {[65, 85, 45, 95, 75, 40, 60].map((h, i) => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                        <div className="w-full bg-deli-orange/5 rounded-lg h-32 relative flex items-end">
+                      <div key={i} className="flex-1 flex flex-col items-center gap-3 group/bar">
+                        <div className="w-full bg-slate-50 rounded-2xl h-32 relative flex items-end overflow-hidden border border-slate-100/50">
                           <motion.div 
                             initial={{ height: 0 }}
                             animate={{ height: `${h}%` }}
-                            className="w-full bg-deli-orange rounded-lg shadow-lg shadow-deli-orange/20"
+                            whileHover={{ scaleX: 1.1 }}
+                            className="w-full bg-teal-500 rounded-2xl shadow-lg shadow-teal-500/20 group-hover/bar:bg-teal-400 transition-colors"
                           />
                         </div>
-                        <span className="text-[9px] font-bold opacity-30">{['L','M','M','J','V','S','D'][i]}</span>
+                        <span className="text-[10px] font-black text-gray-400 group-hover:text-teal-600 transition-colors">{['L','M','M','J','V','S','D'][i]}</span>
                       </div>
                     ))}
                     {/* Graph line decoration */}
-                    <svg className="absolute inset-x-0 bottom-10 h-32 w-full pointer-events-none stroke-current text-deli-teal/10 fill-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                      <path d="M 0 50 Q 25 20 50 50 T 100 50" strokeWidth="2" strokeDasharray="5,5" />
+                    <svg className="absolute inset-x-0 bottom-12 h-32 w-full pointer-events-none stroke-current text-teal-100/50 fill-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <path d="M 0 50 Q 25 20 50 50 T 100 50" strokeWidth="1" strokeDasharray="10,5" />
                     </svg>
                   </div>
                 </div>
@@ -1314,32 +2648,52 @@ export default function App() {
 
           <main className="px-6 pb-4">
             {partnerActiveTab === 'orders' && (
-              <div className="space-y-4">
-                <h3 className={`text-xl ${current.headerFont} mb-4`}>Pedidos en Curso</h3>
+              <div className="space-y-6 pt-4">
+                <div className="flex items-center justify-between mb-2">
+                   <h3 className="text-2xl font-black text-gray-800 tracking-tight">Pedidos en Curso</h3>
+                   <span className="bg-teal-50 text-teal-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{partnerOrders.length} activos</span>
+                </div>
                 {partnerOrders.map((order) => (
-                  <div key={order.id} className={`${current.card} p-5 rounded-[28px] space-y-4`}>
+                  <motion.div 
+                    key={order.id} 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white p-8 rounded-[40px] border-2 border-teal-50 shadow-sm space-y-6 hover:shadow-xl hover:border-teal-100 transition-all group"
+                  >
                     <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-sm font-bold">{order.customerName}</h4>
-                          <span className="text-[8px] px-1.5 py-0.5 bg-deli-teal/10 text-deli-teal rounded-full font-bold">Premium</span>
+                      <div className="flex items-center gap-5">
+                        <div className="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center border border-teal-100">
+                           <User className="w-6 h-6 text-teal-500" />
                         </div>
-                        <p className="text-[10px] opacity-40">{order.customerPhone}</p>
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <h4 className="text-base font-black text-gray-800">{order.customerName}</h4>
+                            <span className="text-[8px] px-2 py-0.5 bg-teal-500 text-white rounded-full font-black uppercase tracking-widest">Premium</span>
+                          </div>
+                          <p className="text-xs font-bold text-gray-400">{order.customerPhone}</p>
+                        </div>
                       </div>
-                      <span className="text-xs font-black text-deli-teal">{order.total}</span>
+                      <div className="text-right">
+                         <span className="text-lg font-black text-teal-600 tracking-tight">{order.total}</span>
+                         <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest">A pagar</p>
+                      </div>
                     </div>
 
-                    <div className="bg-deli-dark/5 p-3 rounded-2xl">
-                      <p className="text-[9px] font-bold opacity-40 uppercase mb-2">Productos:</p>
-                      <ul className="text-[10px] font-bold space-y-1">
-                        {order.items.map((it, idx) => (
-                          <li key={idx} className="flex justify-between">
-                            <span>{it}</span>
-                            <span>x1</span>
-                          </li>
-                        ))}
+                    <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 group-hover:bg-white transition-colors">
+                      <p className="text-[10px] font-black text-teal-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                         <ShoppingBag className="w-3 h-3" />
+                         Productos Solicitados:
+                      </p>
+                      <ul className="text-xs font-bold text-gray-600 space-y-2">
+                         {order.items.map((it, idx) => (
+                           <li key={idx} className="flex justify-between items-center bg-white px-4 py-2 rounded-xl border border-gray-100/50">
+                             <span>{it}</span>
+                             <span className="w-1.5 h-1.5 bg-teal-400 rounded-full" />
+                           </li>
+                         ))}
                       </ul>
                     </div>
+
 
                     <div className="flex gap-2">
                       <button 
@@ -1347,17 +2701,21 @@ export default function App() {
                           const newOrders = partnerOrders.map(o => o.id === order.id ? { ...o, chatOpen: true } : o);
                           setPartnerOrders(newOrders);
                         }}
-                        className="flex-1 py-3 bg-deli-teal/10 text-deli-teal rounded-xl text-[10px] font-bold flex items-center justify-center gap-2"
+                        className="flex-1 py-4 bg-white text-teal-600 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-teal-50 hover:border-teal-200 hover:shadow-lg transition-all"
                       >
                         <MessageCircle className="w-3 h-3" />
-                        Chat Clientes
+                        Chat Cliente
                       </button>
                       <button 
                         onClick={() => order.status === 'Preparando' ? null : acceptPartnerOrder(order.id)}
                         disabled={order.status === 'Preparando' || order.status === 'En camino'}
-                        className={`flex-1 py-3 ${order.status !== 'Preparando' && order.status !== 'En camino' ? 'bg-deli-teal shadow-lg shadow-deli-teal/20' : 'bg-deli-teal/10 text-deli-teal'} rounded-xl text-[10px] font-bold transition-all`}
+                        className={`flex-1 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                           order.status !== 'Preparando' && order.status !== 'En camino' 
+                           ? 'bg-teal-500 text-white shadow-xl shadow-teal-500/20' 
+                           : 'bg-teal-50 text-teal-200'
+                        }`}
                       >
-                        {order.status === 'Preparando' ? 'Aceptado ✅' : order.status === 'En camino' ? 'En camino' : 'Aceptar Pedido'}
+                        {order.status === 'Preparando' ? 'Aceptado ✓' : order.status === 'En camino' ? 'En ruta' : 'Aceptar Pedido'}
                       </button>
                     </div>
 
@@ -1384,16 +2742,16 @@ export default function App() {
                         <motion.div 
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="p-4 bg-deli-orange/10 border border-deli-orange/20 rounded-2xl flex items-center gap-3"
+                          className="p-6 bg-orange-50 border-2 border-orange-100 rounded-3xl flex items-center gap-4"
                         >
                           <motion.div 
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                            className="w-5 h-5 border-2 border-deli-orange border-t-transparent rounded-full"
+                            className="w-6 h-6 border-3 border-orange-500 border-t-transparent rounded-full"
                           />
                           <div className="flex-1">
-                            <p className="text-[10px] font-bold text-deli-orange">Buscando el Socio Conductor...</p>
-                            <p className="text-[8px] opacity-60">Asignando el más cercano a tu ubicación</p>
+                             <p className="text-xs font-black text-orange-600 uppercase tracking-widest">Buscando Socio Conductor...</p>
+                             <p className="text-[10px] font-bold text-orange-400 -mt-0.5 tracking-tight">Asignando la ruta más eficiente</p>
                           </div>
                         </motion.div>
                       )}
@@ -1491,7 +2849,7 @@ export default function App() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
